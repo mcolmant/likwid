@@ -9,7 +9,11 @@ COMPILER = GCC#NO SPACE
 COLOR = BLUE#NO SPACE
 
 # Path were to install likwid
-PREFIX = /usr/local#NO SPACE
+PREFIX = /home/davydden/libs/liwkid-install#NO SPACE
+
+# uncomment to optionally set external lua@5.3:
+# default is use internally provide lua
+# LUA_PREFIX = /usr#NO SPACE
 
 #################################################################
 # Common users do not need to change values below this comment! #
@@ -33,7 +37,7 @@ INSTALLED_LIBPREFIX = $(INSTALLED_PREFIX)/lib#NO SPACE
 # chown installed tools to this user/group
 # if you change anything here, make sure that the user/group can access
 # the MSR devices and (on Intel) the PCI devices.
-INSTALL_CHOWN = -g root -o root
+INSTALL_CHOWN = -g $(USER) -o $(USER)
 
 # For the daemon based secure msr/pci access configure
 # the absolute path to the msr daemon executable.

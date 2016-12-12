@@ -13,10 +13,19 @@ DEFINES   += -DVERSION=$(VERSION)         \
 
 DYNAMIC_TARGET_LIB := liblikwid.so
 STATIC_TARGET_LIB := liblikwid.a
-
-LUA_FOLDER := ext/lua
-SHARED_LIBLUA := liblikwid-lua.so
-STATIC_LIBLUA := liblikwid-lua.a
+# LUA:
+ifdef LUA_PREFIX
+LUA_FOLDER := $(LUA_PREFIX)#NO SPACE
+LUA_FOLDER_LIB := $(LUA_PREFIX)/lib#NO SPACE
+LUA_INTERNAL := false#NO SPACE
+else
+LUA_FOLDER := $(PWD)/ext/lua#NO SPACE
+LUA_FOLDER_LIB := $(PWD)/ext/lua#NO SPACE
+LUA_INTERNAL := true#NO SPACE
+endif
+SHARED_LIBLUA := liblua.so
+STATIC_LIBLUA := liblua.a
+# HWLOC:
 HWLOC_FOLDER := ext/hwloc
 STATIC_LIBHWLOC := liblikwid-hwloc.a
 SHARED_LIBHWLOC := liblikwid-hwloc.so

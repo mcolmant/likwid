@@ -60,8 +60,8 @@ BENCH_DIR   = ./x86-64
 endif
 endif
 
-SHARED_TARGET_LIB := -L.. -L../ext/hwloc/ -L../ext/lua -llikwid -llikwid-hwloc -llikwid-lua
-STATIC_TARGET_LIB := ../liblikwid.a ../ext/hwloc/liblikwid-hwloc.a ../ext/lua/liblikwid-lua.a
+SHARED_TARGET_LIB := -L.. -L../ext/hwloc/ -L$(LUA_FOLDER_LIB) -llikwid -llikwid-hwloc -llua
+STATIC_TARGET_LIB := ../liblikwid.a ../ext/hwloc/liblikwid-hwloc.a $(LUA_FOLDER_LIB)/liblua.a
 TARGET_LIB = $(SHARED_TARGET_LIB)
 
 BENCH_LIBS :=
