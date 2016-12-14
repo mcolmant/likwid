@@ -113,14 +113,14 @@ docs:
 $(L_APPS):  $(addprefix $(SRC_DIR)/applications/,$(addsuffix  .lua,$(L_APPS)))
 	@echo "===>  ADJUSTING  $@"
 	@if [ "$(ACCESSMODE)" = "direct" ]; then sed -i -e s/"access_mode = 1"/"access_mode = 0"/g $(SRC_DIR)/applications/$@.lua;fi
-	@if [ "$(LUA_INTERNAL)" = "false"]; then \
-		@sed -e s/'<INSTALLED_BINPREFIX>'\\/likwid-lua/$(subst /,\\/,$(INSTALLED_BINPREFIX))\\/$(LUA_LIB_NAME)/g; \
-	fi
 	@sed -e s/'<INSTALLED_BINPREFIX>'/$(subst /,\\/,$(INSTALLED_BINPREFIX))/g \
 		-e s/'<INSTALLED_PREFIX>'/$(subst /,\\/,$(INSTALLED_PREFIX))/g \
 		-e s/'<VERSION>'/$(VERSION).$(RELEASE)/g \
 		-e s/'<DATE>'/$(DATE)/g \
 		$(addprefix $(SRC_DIR)/applications/,$(addsuffix  .lua,$@)) > $@
+	@if [ "$(LUA_INTERNAL)" = "false" ]; then \
+		sed -i -e s+"$(subst /,\\/,$(INSTALLED_BINPREFIX))/likwid-lua"+"$(LUA_BIN)/$(LUA_LIB_NAME)"+ $@; \
+	fi
 	@if [ "$(ACCESSMODE)" = "direct" ]; then sed -i -e s/"access_mode = 0"/"access_mode = 1"/g $(SRC_DIR)/applications/$@.lua;fi
 
 $(L_HELPER):
@@ -327,8 +327,8 @@ install: install_daemon install_freq
 	@for APP in $(C_APPS); do \
 		install -m 755 $$APP  $(BINPREFIX); \
 	done
-	@if [ "$(LUA_INTERNAL)" = "true"]; then \
-		@install -m 755 ext/lua/lua $(BINPREFIX)/$(LUA_LIB_NAME); \
+	@if [ "$(LUA_INTERNAL)" = "true" ]; then \
+		install -m 755 ext/lua/lua $(BINPREFIX)/$(LUA_LIB_NAME); \
 	fi
 	@echo "===> INSTALL helper applications to $(BINPREFIX)"
 	@install -m 755 perl/feedGnuplot $(BINPREFIX)
@@ -342,8 +342,8 @@ install: install_daemon install_freq
 	@install -m 755 $(TARGET_LIB) $(LIBPREFIX)/$(TARGET_LIB).$(VERSION).$(RELEASE)
 	@install -m 755 liblikwidpin.so $(LIBPREFIX)/liblikwidpin.so.$(VERSION).$(RELEASE)
 	@install -m 755 $(TARGET_HWLOC_LIB) $(LIBPREFIX)/$(shell basename $(TARGET_HWLOC_LIB)).$(VERSION).$(RELEASE)
-	@if [ "$(LUA_INTERNAL)" = "true"]; then \
-		@install -m 755 $(TARGET_LUA_LIB) $(LIBPREFIX)/$(shell basename $(TARGET_LUA_LIB)).$(VERSION).$(RELEASE); \
+	@if [ "$(LUA_INTERNAL)" = "true" ]; then \
+		install -m 755 $(TARGET_LUA_LIB) $(LIBPREFIX)/$(shell basename $(TARGET_LUA_LIB)).$(VERSION).$(RELEASE); \
 	fi
 	@cd $(LIBPREFIX) && ln -fs $(TARGET_LIB).$(VERSION).$(RELEASE) $(TARGET_LIB)
 	@cd $(LIBPREFIX) && ln -fs $(TARGET_LIB).$(VERSION).$(RELEASE) $(TARGET_LIB).$(VERSION)
@@ -351,9 +351,9 @@ install: install_daemon install_freq
 	@cd $(LIBPREFIX) && ln -fs $(PINLIB).$(VERSION).$(RELEASE) $(PINLIB).$(VERSION)
 	@cd $(LIBPREFIX) && ln -fs $(shell basename $(TARGET_HWLOC_LIB)).$(VERSION).$(RELEASE) $(shell basename $(TARGET_HWLOC_LIB))
 	@cd $(LIBPREFIX) && ln -fs $(shell basename $(TARGET_HWLOC_LIB)).$(VERSION).$(RELEASE) $(shell basename $(TARGET_HWLOC_LIB)).$(VERSION)
-	@if [ "$(LUA_INTERNAL)" = "true"]; then \
-		@cd $(LIBPREFIX) && ln -fs $(shell basename $(TARGET_LUA_LIB)).$(VERSION).$(RELEASE) $(shell basename $(TARGET_LUA_LIB)); \
-		@cd $(LIBPREFIX) && ln -fs $(shell basename $(TARGET_LUA_LIB)).$(VERSION).$(RELEASE) $(shell basename $(TARGET_LUA_LIB)).$(VERSION); \
+	@if [ "$(LUA_INTERNAL)" = "true" ]; then \
+		cd $(LIBPREFIX) && ln -fs $(shell basename $(TARGET_LUA_LIB)).$(VERSION).$(RELEASE) $(shell basename $(TARGET_LUA_LIB)); \
+		cd $(LIBPREFIX) && ln -fs $(shell basename $(TARGET_LUA_LIB)).$(VERSION).$(RELEASE) $(shell basename $(TARGET_LUA_LIB)).$(VERSION); \
 	fi
 	@echo "===> INSTALL man pages to $(MANPREFIX)/man1"
 	@mkdir -p $(MANPREFIX)/man1

@@ -16,6 +16,7 @@ PREFIX = /usr/local#NO SPACE
 #LUA_INCLUDE_DIR = /usr/include/lua5.2#NO SPACE
 #LUA_LIB_DIR = /usr/lib/x86_64-linux-gnu#NO SPACE
 #LUA_LIB_NAME = lua5.2#NO SPACE, executable is assumed to have the same name
+#LUA_BIN = /usr/bin#NO SPACE
 
 #################################################################
 # Common users do not need to change values below this comment! #
