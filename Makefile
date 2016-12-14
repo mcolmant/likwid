@@ -46,11 +46,11 @@ include $(MAKE_DIR)/include_$(COMPILER).mk
 include $(MAKE_DIR)/config_checks.mk
 include $(MAKE_DIR)/config_defines.mk
 
-INCLUDES  += -I./src/includes -I$(LUA_FOLDER)/includes -I$(HWLOC_FOLDER)/include -I$(BUILD_DIR)
+INCLUDES  += -I./src/includes -I$(LUA_INCLUDE_DIR) -I$(HWLOC_FOLDER)/include -I$(BUILD_DIR)
 LIBS      += -ldl
 
 ifeq ($(LUA_INTERNAL),false)
-LIBS      += -llua
+LIBS      += -l$(LUA_LIB_NAME)
 endif
 
 #CONFIGURE BUILD SYSTEM
@@ -170,7 +170,7 @@ $(TARGET_LUA_LIB):
 	$(Q)$(MAKE) --no-print-directory -C $(LUA_FOLDER) $(MAKECMDGOALS)
 else
 $(TARGET_LUA_LIB):
-	@echo "===>  EXTERNAL LUA $(LUA_FOLDER)"
+	@echo "===>  EXTERNAL LUA"
 endif
 
 $(TARGET_HWLOC_LIB):
@@ -325,7 +325,7 @@ install: install_daemon install_freq
 		install -m 755 $$APP  $(BINPREFIX); \
 	done
 	@if [ "$(LUA_INTERNAL)" = "true"]; then \
-		@install -m 755 ext/lua/lua $(BINPREFIX)/likwid-lua; \
+		@install -m 755 ext/lua/lua $(BINPREFIX)/$(LUA_LIB_NAME); \
 	fi
 	@echo "===> INSTALL helper applications to $(BINPREFIX)"
 	@install -m 755 perl/feedGnuplot $(BINPREFIX)
