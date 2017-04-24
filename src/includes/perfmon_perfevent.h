@@ -42,7 +42,6 @@
 
 typedef struct {
     int* cpu_event_fds[MAX_NUM_THREADS];
-    int is_initialized;
 } GroupCounters;
 
 
@@ -266,7 +265,7 @@ int perfmon_setupCountersThread_perfevent(
     struct perf_event_attr attr;
     int group_fd = -1;
 
-    if (!groupCounters[groupId].is_initialized)
+    if (groupCounters[groupId].cpu_event_fds[cpu_id] == NULL)
     {
         groupCounters[groupId].cpu_event_fds[cpu_id] = (int*) malloc(perfmon_numCounters * sizeof(int));
         if (groupCounters[groupId].cpu_event_fds[cpu_id] == NULL)
@@ -274,7 +273,6 @@ int perfmon_setupCountersThread_perfevent(
             return -ENOMEM;
         }
         memset(groupCounters[groupId].cpu_event_fds[cpu_id], -1, perfmon_numCounters * sizeof(int));
-        groupCounters[groupId].is_initialized = 1;
     }
 
     for (int i=0;i < eventSet->numberOfEvents;i++)
