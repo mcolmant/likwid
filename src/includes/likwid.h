@@ -739,6 +739,15 @@ The counter registered are zeroed before enabling the counters
 @return 0 on success and -(thread_id+1) for error
 */
 extern int perfmon_startCounters(void) __attribute__ ((visibility ("default") ));
+/*! \brief Start performance monitoring counters on a group
+
+Start the counters that have been previously set up by perfmon_setupCounters().
+The counter registered are zeroed before enabling the counters.
+Only one group is started.
+@param [in] groupId (returned from perfmon_addEventSet())
+@return 0 on success and -(thread_id+1) for error
+*/
+extern int perfmon_startGroupCounters(int groupId) __attribute__ ((visibility ("default") ));
 /*! \brief Stop performance monitoring counters
 
 Stop the counters that have been previously started by perfmon_startCounters().
@@ -746,6 +755,15 @@ All config registers get zeroed before reading the counter register.
 @return 0 on success and -(thread_id+1) for error
 */
 extern int perfmon_stopCounters(void) __attribute__ ((visibility ("default") ));
+/*! \brief Stop performance monitoring counters on a group
+
+Stop the counters that have been previously started by perfmon_startCounters().
+All config registers get zeroed before reading the counter register.
+Only one group is stopped.
+@param [in] groupId (returned from perfmon_addEventSet())
+@return 0 on success and -(thread_id+1) for error
+*/
+extern int perfmon_stopGroupCounters(int groupId) __attribute__ ((visibility ("default") ));
 /*! \brief Read the performance monitoring counters on all CPUs
 
 Read the counters that have been previously started by perfmon_startCounters().

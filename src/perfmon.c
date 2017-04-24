@@ -38,6 +38,7 @@
 #include <float.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <pthread.h>
 
 #include <types.h>
 #include <likwid.h>
@@ -94,6 +95,8 @@ uint64_t currentConfig[MAX_NUM_THREADS][NUM_PMC] = { 0 };
 PerfmonGroupSet* groupSet = NULL;
 LikwidResults* markerResults = NULL;
 int markerRegions = 0;
+
+pthread_mutex_t lock;
 
 int (*perfmon_startCountersThread) (int thread_id, PerfmonEventSet* eventSet);
 int (*perfmon_stopCountersThread) (int thread_id, PerfmonEventSet* eventSet);
@@ -1354,6 +1357,12 @@ perfmon_init(int nrThreads, const int* threadsToCpu)
         return -EEXIST;
     }
 
+    if (pthread_mutex_init(&lock, NULL) != 0)
+    {
+        ERROR_PLAIN_PRINT(Cannot initialize a mutex);
+        return -EINVAL;
+    }
+
     groupSet = (PerfmonGroupSet*) malloc(sizeof(PerfmonGroupSet));
     if (groupSet == NULL)
     {
@@ -1437,6 +1446,7 @@ perfmon_init(int nrThreads, const int* threadsToCpu)
         initThreadArch(threadsToCpu[i]);
     }
     perfmon_initialized = 1;
+
     return 0;
 }
 
@@ -1496,6 +1506,8 @@ perfmon_finalize(void)
 int
 perfmon_addEventSet(const char* eventCString)
 {
+    pthread_mutex_lock(&lock);
+
     int i, j, err, isPerfGroup = 0;
     bstring eventBString;
     struct bstrList* eventtokens;
@@ -1734,10 +1746,12 @@ past_checks:
     {
         eventSet->state = STATE_NONE;
         groupSet->numberOfActiveGroups++;
+        pthread_mutex_unlock(&lock);
         return groupSet->numberOfActiveGroups-1;
     }
     else
     {
+        pthread_mutex_unlock(&lock);
         fprintf(stderr,"ERROR: No event in given event string can be configured.\n");
         fprintf(stderr,"       Either the events or counters do not exist for the\n");
         fprintf(stderr,"       current architecture. If event options are set, they might\n");
@@ -1874,11 +1888,11 @@ int perfmon_startGroupCounters(int groupId)
     {
         groupId = groupSet->activeGroup;
     }
-    else
+    /*else
     {
         ERROR_PLAIN_PRINT(Cannot find group to start);
         return -EINVAL;
-    }
+    }*/
     return __perfmon_startCounters(groupId);
 }
 
@@ -1963,11 +1977,11 @@ perfmon_stopGroupCounters(int groupId)
     {
         groupId = groupSet->activeGroup;
     }
-    else
+    /*else
     {
         ERROR_PLAIN_PRINT(Cannot find group to start);
         return -EINVAL;
-    }
+    }*/
     if (groupSet->groups[groupId].state != STATE_START)
     {
         return -EINVAL;
