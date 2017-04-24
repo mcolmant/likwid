@@ -40,8 +40,15 @@
 #include <asm/unistd.h>
 #include <string.h>
 
+typedef struct {
+    int* cpu_event_fds[MAX_NUM_THREADS];
+    int is_initialized;
+} GroupCounters;
 
-static int* cpu_event_fds[MAX_NUM_THREADS] = { NULL };
+
+//static int* cpu_event_fds[MAX_NUM_THREADS] = { NULL };
+
+static GroupCounters groupCounters[512];
 static int paranoid_level = -1;
 static int informed_paranoid = 0;
 static int running_group = -1;
@@ -130,7 +137,7 @@ int perfmon_init_perfevent(int cpu_id)
         }
         informed_paranoid = 1;
     }
-    if (cpu_event_fds[cpu_id] == NULL)
+    /*if (cpu_event_fds[cpu_id] == NULL)
     {
         cpu_event_fds[cpu_id] = (int*) malloc(perfmon_numCounters * sizeof(int));
         if (cpu_event_fds[cpu_id] == NULL)
@@ -138,7 +145,8 @@ int perfmon_init_perfevent(int cpu_id)
             return -ENOMEM;
         }
         memset(cpu_event_fds[cpu_id], -1, perfmon_numCounters * sizeof(int));
-    }
+    }*/
+
     return 0;
 }
 
@@ -249,6 +257,7 @@ int perf_uncore_setup(struct perf_event_attr *attr, RegisterType type, PerfmonEv
 
 
 int perfmon_setupCountersThread_perfevent(
+        int groupId,
         int thread_id,
         PerfmonEventSet* eventSet)
 {
@@ -256,10 +265,22 @@ int perfmon_setupCountersThread_perfevent(
     int cpu_id = groupSet->threads[thread_id].processorId;
     struct perf_event_attr attr;
     int group_fd = -1;
+
+    if (!groupCounters[groupId].is_initialized)
+    {
+        groupCounters[groupId].cpu_event_fds[cpu_id] = (int*) malloc(perfmon_numCounters * sizeof(int));
+        if (groupCounters[groupId].cpu_event_fds[cpu_id] == NULL)
+        {
+            return -ENOMEM;
+        }
+        memset(groupCounters[groupId].cpu_event_fds[cpu_id], -1, perfmon_numCounters * sizeof(int));
+        groupCounters[groupId].is_initialized = 1;
+    }
+
     for (int i=0;i < eventSet->numberOfEvents;i++)
     {
         RegisterIndex index = eventSet->events[i].index;
-        if (cpu_event_fds[cpu_id][index] != -1)
+        if (groupCounters[groupId].cpu_event_fds[cpu_id][index] != -1)
         {
             continue;
         }
@@ -328,8 +349,8 @@ int perfmon_setupCountersThread_perfevent(
                 }
             }
 
-            cpu_event_fds[cpu_id][index] = perf_event_open(&attr, pid, cpu_id, -1, flags);
-            if (cpu_event_fds[cpu_id][index] < 0)
+            groupCounters[groupId].cpu_event_fds[cpu_id][index] = perf_event_open(&attr, pid, cpu_id, -1, flags);
+            if (groupCounters[groupId].cpu_event_fds[cpu_id][index] < 0)
             {
                 fprintf(stderr, "Setup of event %s on CPU %d failed: %s\n", event->name, cpu_id, strerror(errno));
                 fprintf(stderr, "perf_event_open: pid=%d, flags=%d\n", pid, flags);
@@ -337,18 +358,18 @@ int perfmon_setupCountersThread_perfevent(
                 fprintf(stderr, "Type of event 0x%X\n", attr.type);
                 continue;
             }
-            if (group_fd < 0)
+            /*if (group_fd < 0)
             {
                 group_fd = cpu_event_fds[cpu_id][index];
                 running_group = group_fd;
-            }
+            }*/
             eventSet->events[i].threadCounter[thread_id].init = TRUE;
         }
     }
     return 0;
 }
 
-int perfmon_startCountersThread_perfevent(int thread_id, PerfmonEventSet* eventSet)
+int perfmon_startCountersThread_perfevent(int groupId, int thread_id, PerfmonEventSet* eventSet)
 {
     int cpu_id = groupSet->threads[thread_id].processorId;
     for (int i=0;i < eventSet->numberOfEvents;i++)
@@ -356,19 +377,19 @@ int perfmon_startCountersThread_perfevent(int thread_id, PerfmonEventSet* eventS
         if (eventSet->events[i].threadCounter[thread_id].init == TRUE)
         {
             RegisterIndex index = eventSet->events[i].index;
-            if (cpu_event_fds[cpu_id][index] < 0)
+            if (groupCounters[groupId].cpu_event_fds[cpu_id][index] < 0)
                 continue;
             VERBOSEPRINTREG(cpu_id, 0x0, 0x0, RESET_COUNTER);
-            ioctl(cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_RESET, 0);
+            ioctl(groupCounters[groupId].cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_RESET, 0);
             eventSet->events[i].threadCounter[thread_id].startData = 0x0ULL;
             VERBOSEPRINTREG(cpu_id, 0x0, 0x0, START_COUNTER);
-            ioctl(cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_ENABLE, 0);
+            ioctl(groupCounters[groupId].cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_ENABLE, 0);
         }
     }
     return 0;
 }
 
-int perfmon_stopCountersThread_perfevent(int thread_id, PerfmonEventSet* eventSet)
+int perfmon_stopCountersThread_perfevent(int groupId, int thread_id, PerfmonEventSet* eventSet)
 {
     int ret;
     int cpu_id = groupSet->threads[thread_id].processorId;
@@ -378,25 +399,25 @@ int perfmon_stopCountersThread_perfevent(int thread_id, PerfmonEventSet* eventSe
         if (eventSet->events[i].threadCounter[thread_id].init == TRUE)
         {
             RegisterIndex index = eventSet->events[i].index;
-            if (cpu_event_fds[cpu_id][index] < 0)
+            if (groupCounters[groupId].cpu_event_fds[cpu_id][index] < 0)
                 continue;
-            VERBOSEPRINTREG(cpu_id, cpu_event_fds[cpu_id][index], 0x0, FREEZE_COUNTER);
-            ioctl(cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_DISABLE, 0);
+            VERBOSEPRINTREG(cpu_id, groupCounters[groupId].cpu_event_fds[cpu_id][index], 0x0, FREEZE_COUNTER);
+            ioctl(groupCounters[groupId].cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_DISABLE, 0);
             tmp = 0;
-            ret = read(cpu_event_fds[cpu_id][index], &tmp, sizeof(long long));
+            ret = read(groupCounters[groupId].cpu_event_fds[cpu_id][index], &tmp, sizeof(long long));
             DEBUG_PRINT(DEBUGLEV_DEVELOP, READ CPU %d COUNTER %d VALUE %llu, cpu_id, index, tmp);
             if (ret == sizeof(long long))
             {
                 eventSet->events[i].threadCounter[thread_id].counterData = tmp;
             }
-            ioctl(cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_RESET, 0);
-            VERBOSEPRINTREG(cpu_id, cpu_event_fds[cpu_id][index], 0x0, RESET_COUNTER);
+            ioctl(groupCounters[groupId].cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_RESET, 0);
+            VERBOSEPRINTREG(cpu_id, groupCounters[groupId].cpu_event_fds[cpu_id][index], 0x0, RESET_COUNTER);
         }
     }
     return 0;
 }
 
-int perfmon_readCountersThread_perfevent(int thread_id, PerfmonEventSet* eventSet)
+int perfmon_readCountersThread_perfevent(int groupId, int thread_id, PerfmonEventSet* eventSet)
 {
     int ret;
     int cpu_id = groupSet->threads[thread_id].processorId;
@@ -406,25 +427,25 @@ int perfmon_readCountersThread_perfevent(int thread_id, PerfmonEventSet* eventSe
         if (eventSet->events[i].threadCounter[thread_id].init == TRUE)
         {
             RegisterIndex index = eventSet->events[i].index;
-            if (cpu_event_fds[cpu_id][index] < 0)
+            if (groupCounters[groupId].cpu_event_fds[cpu_id][index] < 0)
                 continue;
-            VERBOSEPRINTREG(cpu_id, cpu_event_fds[cpu_id][index], 0x0, FREEZE_COUNTER);
-            ioctl(cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_DISABLE, 0);
+            VERBOSEPRINTREG(cpu_id, groupCounters[groupId].cpu_event_fds[cpu_id][index], 0x0, FREEZE_COUNTER);
+            ioctl(groupCounters[groupId].cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_DISABLE, 0);
             tmp = 0;
-            ret = read(cpu_event_fds[cpu_id][index], &tmp, sizeof(long long));
-            VERBOSEPRINTREG(cpu_id, cpu_event_fds[cpu_id][index], tmp, READ_COUNTER);
+            ret = read(groupCounters[groupId].cpu_event_fds[cpu_id][index], &tmp, sizeof(long long));
+            VERBOSEPRINTREG(cpu_id, groupCounters[groupId].cpu_event_fds[cpu_id][index], tmp, READ_COUNTER);
             if (ret == sizeof(long long))
             {
                 eventSet->events[i].threadCounter[thread_id].counterData = tmp;
             }
-            VERBOSEPRINTREG(cpu_id, cpu_event_fds[cpu_id][index], 0x0, UNFREEZE_COUNTER);
-            ioctl(cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_ENABLE, 0);
+            VERBOSEPRINTREG(cpu_id, groupCounters[groupId].cpu_event_fds[cpu_id][index], 0x0, UNFREEZE_COUNTER);
+            ioctl(groupCounters[groupId].cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_ENABLE, 0);
         }
     }
     return 0;
 }
 
-int perfmon_finalizeCountersThread_perfevent(int thread_id, PerfmonEventSet* eventSet)
+int perfmon_finalizeCountersThread_perfevent(int groupId, int thread_id, PerfmonEventSet* eventSet)
 {
     int cpu_id = groupSet->threads[thread_id].processorId;
     for (int i=0;i < eventSet->numberOfEvents;i++)
@@ -432,13 +453,13 @@ int perfmon_finalizeCountersThread_perfevent(int thread_id, PerfmonEventSet* eve
         if (eventSet->events[i].threadCounter[thread_id].init == TRUE)
         {
             RegisterIndex index = eventSet->events[i].index;
-            ioctl(cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_DISABLE, 0);
-            ioctl(cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_RESET, 0);
+            ioctl(groupCounters[groupId].cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_DISABLE, 0);
+            ioctl(groupCounters[groupId].cpu_event_fds[cpu_id][index], PERF_EVENT_IOC_RESET, 0);
             eventSet->events[i].threadCounter[thread_id].init = FALSE;
-            close(cpu_event_fds[cpu_id][index]);
-            cpu_event_fds[cpu_id][index] = -1;
+            close(groupCounters[groupId].cpu_event_fds[cpu_id][index]);
+            groupCounters[groupId].cpu_event_fds[cpu_id][index] = -1;
         }
     }
-    free(cpu_event_fds[cpu_id]);
+    free(groupCounters[groupId].cpu_event_fds[cpu_id]);
     return 0;
 }

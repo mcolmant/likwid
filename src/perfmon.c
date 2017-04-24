@@ -98,11 +98,11 @@ int markerRegions = 0;
 
 pthread_mutex_t lock;
 
-int (*perfmon_startCountersThread) (int thread_id, PerfmonEventSet* eventSet);
-int (*perfmon_stopCountersThread) (int thread_id, PerfmonEventSet* eventSet);
-int (*perfmon_readCountersThread) (int thread_id, PerfmonEventSet* eventSet);
-int (*perfmon_setupCountersThread) (int thread_id, PerfmonEventSet* eventSet);
-int (*perfmon_finalizeCountersThread) (int thread_id, PerfmonEventSet* eventSet);
+int (*perfmon_startCountersThread) (int groupId, int thread_id, PerfmonEventSet* eventSet);
+int (*perfmon_stopCountersThread) (int groupId, int thread_id, PerfmonEventSet* eventSet);
+int (*perfmon_readCountersThread) (int groupId, int thread_id, PerfmonEventSet* eventSet);
+int (*perfmon_setupCountersThread) (int groupId, int thread_id, PerfmonEventSet* eventSet);
+int (*perfmon_finalizeCountersThread) (int groupId, int thread_id, PerfmonEventSet* eventSet);
 
 int (*initThreadArch) (int cpu_id);
 void perfmon_delEventSet(int groupID);
@@ -1467,7 +1467,7 @@ perfmon_finalize(void)
     {
         for (thread=0;thread< groupSet->numberOfThreads; thread++)
         {
-            perfmon_finalizeCountersThread(thread, &(groupSet->groups[group]));
+            perfmon_finalizeCountersThread(group, thread, &(groupSet->groups[group]));
         }
         for (event=0;event < groupSet->groups[group].numberOfEvents; event++)
         {
@@ -1779,7 +1779,7 @@ __perfmon_setupCountersThread(int thread_id, int groupId)
         return -ENOENT;
     }
 
-    CHECK_AND_RETURN_ERROR(perfmon_setupCountersThread(thread_id, &groupSet->groups[groupId]),
+    CHECK_AND_RETURN_ERROR(perfmon_setupCountersThread(groupId, thread_id, &groupSet->groups[groupId]),
             Setup of counters failed);
 
     groupSet->activeGroup = groupId;
@@ -1842,7 +1842,7 @@ __perfmon_startCounters(int groupId)
     {
         for (j=0; j<perfmon_getNumberOfEvents(groupId); j++)
             groupSet->groups[groupId].events[j].threadCounter[i].overflows = 0;
-        ret = perfmon_startCountersThread(groupSet->threads[i].thread_id, &groupSet->groups[groupId]);
+        ret = perfmon_startCountersThread(groupId, groupSet->threads[i].thread_id, &groupSet->groups[groupId]);
         if (ret)
         {
             return -groupSet->threads[i].thread_id-1;
@@ -1914,7 +1914,7 @@ __perfmon_stopCounters(int groupId)
 
     for (i = 0; i<groupSet->numberOfThreads; i++)
     {
-        ret = perfmon_stopCountersThread(groupSet->threads[i].thread_id, &groupSet->groups[groupId]);
+        ret = perfmon_stopCountersThread(groupId, groupSet->threads[i].thread_id, &groupSet->groups[groupId]);
         if (ret)
         {
             return -groupSet->threads[i].thread_id-1;
@@ -2015,7 +2015,7 @@ __perfmon_readCounters(int groupId, int threadId)
     {
         for (threadId = 0; threadId<groupSet->numberOfThreads; threadId++)
         {
-            ret = perfmon_readCountersThread(threadId, &groupSet->groups[groupId]);
+            ret = perfmon_readCountersThread(groupId, threadId, &groupSet->groups[groupId]);
             if (ret)
             {
                 return -threadId-1;
@@ -2036,7 +2036,7 @@ __perfmon_readCounters(int groupId, int threadId)
     }
     else if ((threadId >= 0) && (threadId < groupSet->numberOfThreads))
     {
-        ret = perfmon_readCountersThread(threadId, &groupSet->groups[groupId]);
+        ret = perfmon_readCountersThread(groupId, threadId, &groupSet->groups[groupId]);
         if (ret)
         {
             return -threadId-1;
